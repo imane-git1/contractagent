@@ -1,0 +1,23 @@
+CONTRAT DE FOURNITURE (DOCUMENT FICTIF)
+
+Entre les soussignés :
+La société AlphaTech SAS, ci-après « le Fournisseur »,
+et la société BetaServices SARL, ci-après « le Client ».
+
+Article 1 - Objet
+Le Fournisseur s'engage à livrer au Client 500 capteurs de température selon les spécifications de l'annexe 1.
+
+Article 2 - Livraison
+Le Fournisseur livre les marchandises au plus tard le 15 mars 2027, sur le site du Client à Lyon. Tout retard supérieur à 10 jours ouvrés donne lieu à une pénalité de 1 % du prix par semaine de retard.
+
+Article 3 - Paiement
+Le Client règle chaque facture dans un délai de 30 jours à compter de sa réception. Le Client peut contester une facture par écrit dans les 8 jours suivant sa réception.
+
+Article 4 - Confidentialité
+Chaque partie s'interdit de divulguer les informations confidentielles de l'autre partie pendant la durée du contrat et pendant 3 ans après son terme.
+
+Article 5 - Résiliation
+Le Client peut résilier le contrat à tout moment moyennant un préavis de 30 jours notifié par lettre recommandée. Le Fournisseur peut résilier le contrat en cas de non-paiement persistant après mise en demeure restée sans effet pendant 15 jours.
+
+Article 6 - Garantie
+Le Fournisseur garantit les capteurs contre tout défaut pendant 24 mois à compter de la livraison et remplace gratuitement tout capteur défectueux.
