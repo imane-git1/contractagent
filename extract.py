@@ -6,13 +6,18 @@ Usage :
 """
 
 import json
+import os
 import sys
+import time
 from pathlib import Path
 
 import pdfplumber
-from anthropic import Anthropic
+from google import genai
+from google.genai import errors, types
 
-MODEL = "claude-sonnet-5-5"
+# Modèle disponible dans le niveau gratuit de Gemini (vérifie le nom dans Google AI Studio
+# si une erreur "model not found" apparaît : les noms évoluent).
+MODEL = "gemini-3.8-flash"
 PROMPT_FILE = Path(__file__).parent / "prompts" / "prompt_v1.txt"
 
 
@@ -27,24 +32,36 @@ def read_contract(path: Path) -> str:
 
 def extract_clauses(contract_text: str) -> dict:
     """ÉTAPE 2 : envoyer le texte à l'IA avec le prompt, récupérer du JSON."""
-    # La clé API est lue dans la variable d'environnement ANTHROPIC_API_KEY.
+    # La clé API est lue dans la variable d'environnement GEMINI_API_KEY.
     # Elle n'est JAMAIS écrite dans le code (bonne pratique de sécurité).
-    client = Anthropic()
+    if not os.environ.get("GEMINI_API_KEY"):
+        raise SystemExit("Variable GEMINI_API_KEY absente. Fais : export GEMINI_API_KEY=\"ta_clé\"")
+    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
     system_prompt = PROMPT_FILE.read_text(encoding="utf-8")
 
-    response = client.messages.create(
-        model=MODEL,
-        max_tokens=2000,
-        temperature=0,  # on veut des réponses stables pour de l'extraction
-        system=system_prompt,
-        messages=[
-            {
-                "role": "user",
-                "content": f"<contrat>\n{contract_text}\n</contrat>",
-            }
-        ],
-    )
-    raw = response.content[0].text.strip()
+    # Les erreurs 5xx (ex : 503 "surcharge") sont temporaires : on réessaie
+    # avec une attente de plus en plus longue (« exponential backoff »).
+    max_attempts = 5
+    for attempt in range(1, max_attempts + 1):
+        try:
+            response = client.models.generate_content(
+                model=MODEL,
+                contents=f"<contrat>\n{contract_text}\n</contrat>",
+                config=types.GenerateContentConfig(
+                    system_instruction=system_prompt,  # le prompt = les règles du jeu
+                    temperature=0,  # on veut des réponses stables pour de l'extraction
+                    response_mime_type="application/json",  # force une sortie JSON
+                ),
+            )
+            break
+        except errors.ServerError as err:
+            if attempt == max_attempts:
+                raise SystemExit(f"Serveur Gemini indisponible après {max_attempts} essais : {err}")
+            wait = 5 * 2 ** (attempt - 1)  # 5 s, 10 s, 20 s, 40 s
+            print(f"Serveur surchargé (essai {attempt}/{max_attempts}), nouvelle tentative dans {wait} s...")
+            time.sleep(wait)
+
+    raw = (response.text or "").strip()
 
     # Au cas où le modèle ajoute des balises ```json malgré la consigne.
     if raw.startswith("```"):

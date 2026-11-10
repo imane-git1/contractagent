@@ -17,9 +17,11 @@ Agent IA qui extrait automatiquement les **obligations** et les **droits** d'un 
 
 ## Installation
 
-```powershell
+Clé API gratuite : [Google AI Studio](https://aistudio.google.com/app/apikey).
+
+```bash
 pip install -r requirements.txt
-$env:ANTHROPIC_API_KEY = "ta_clé_ici"   # la clé n'est jamais écrite dans le code
+export GEMINI_API_KEY="ta_clé_ici"   # la clé n'est jamais écrite dans le code
 python extract.py samples/contrat_fictif.txt
 ```
 
