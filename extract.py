@@ -17,7 +17,17 @@ from google.genai import errors, types
 
 # Modèle disponible dans le niveau gratuit de Gemini (vérifie le nom dans Google AI Studio
 # si une erreur "model not found" apparaît : les noms évoluent).
-MODEL = "gemini-3.8-flash"
+MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
+
+# Erreurs réseau temporaires (connexion coupée, délai dépassé...) : on peut réessayer.
+NETWORK_ERRORS = {
+    "ReadError",
+    "ConnectError",
+    "ConnectTimeout",
+    "ReadTimeout",
+    "WriteError",
+    "RemoteProtocolError",
+}
 PROMPT_FILE = Path(__file__).parent / "prompts" / "prompt_v1.txt"
 
 
@@ -54,11 +64,28 @@ def extract_clauses(contract_text: str) -> dict:
                 ),
             )
             break
-        except errors.ServerError as err:
+        except Exception as err:
+            # Temporaire = erreur serveur 5xx ou coupure réseau. Le reste (clé fausse,
+            # modèle inexistant, bug dans le code...) ne s'arrange pas en attendant.
+            temporaire = isinstance(err, errors.ServerError) or type(err).__name__ in NETWORK_ERRORS
+            if not temporaire:
+                raise
             if attempt == max_attempts:
-                raise SystemExit(f"Serveur Gemini indisponible après {max_attempts} essais : {err}")
+                if isinstance(err, errors.ServerError):
+                    conseil = (
+                        f"Le serveur Google est surchargé pour le modèle {MODEL}. "
+                        "Réessaie dans quelques minutes, ou change de modèle : "
+                        "lance python list_models.py puis export GEMINI_MODEL=\"nom_du_modèle\"."
+                    )
+                else:
+                    conseil = "Vérifie ta connexion, ton VPN ou ton antivirus, puis relance."
+                raise SystemExit(f"Échec après {max_attempts} essais ({type(err).__name__}). {conseil}")
             wait = 5 * 2 ** (attempt - 1)  # 5 s, 10 s, 20 s, 40 s
-            print(f"Serveur surchargé (essai {attempt}/{max_attempts}), nouvelle tentative dans {wait} s...")
+            print(
+                f"Problème temporaire ({type(err).__name__}), essai {attempt}/{max_attempts} : "
+                f"nouvelle tentative dans {wait} s...",
+                flush=True,
+            )
             time.sleep(wait)
 
     raw = (response.text or "").strip()
