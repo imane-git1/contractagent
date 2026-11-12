@@ -6,8 +6,9 @@ Ce fichier est utilisé de deux façons :
 
 Réglages possibles par variables d'environnement (aucun n'est obligatoire) :
     GEMINI_API_KEY   ta clé API (obligatoire)
-    GEMINI_MODEL     un modèle à essayer EN PREMIER
-    GEMINI_MODELS    la liste complète des modèles de secours, séparés par des virgules
+    GEMINI_MODEL     un modèle à essayer EN PREMIER (puis la liste par défaut en secours)
+    GEMINI_MODELS    liste IMPOSÉE de modèles séparés par des virgules (l'emporte sur GEMINI_MODEL).
+                     Un seul nom = pas de bascule : idéal pour comparer des prompts.
     CONTRACT_PROMPT  le fichier de prompt à utiliser, ex : prompt_v2.txt
 """
 
@@ -15,6 +16,7 @@ import json
 import os
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -34,7 +36,12 @@ DEFAULT_MODELS = [
 
 
 def _model_chain() -> list:
-    chain = [m.strip() for m in os.environ.get("GEMINI_MODELS", "").split(",") if m.strip()] or DEFAULT_MODELS
+    # Liste imposée : elle l'emporte sur tout le reste et rien n'y est ajouté. C'est ce qu'il faut
+    # pour comparer proprement (un export GEMINI_MODEL oublié dans le terminal ne peut pas la fausser).
+    explicit = [m.strip() for m in os.environ.get("GEMINI_MODELS", "").split(",") if m.strip()]
+    if explicit:
+        return explicit
+    chain = list(DEFAULT_MODELS)
     chosen = os.environ.get("GEMINI_MODEL", "").strip()
     if chosen:
         chain = [chosen] + [m for m in chain if m != chosen]
@@ -240,7 +247,10 @@ def main() -> None:
     print_table(data)
 
     # On sauvegarde aussi le résultat brut : utile pour comparer tes versions de prompt.
-    out = path.with_suffix(".result.json")
+    # Un fichier par exécution (prompt + modèle + heure) : rien n'est écrasé, et compare.py
+    # peut comparer plusieurs essais d'un même prompt, ce qui est indispensable car l'IA varie.
+    stamp = datetime.now().strftime("%H%M%S")
+    out = path.with_suffix(f".{PROMPT_FILE.stem}.{data.get('modele_utilise', 'modele')}.{stamp}.result.json")
     out.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"\nRésultat sauvegardé dans {out}")
 
